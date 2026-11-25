@@ -1,0 +1,8 @@
+# Visual Studio local files
+.vs/
+*.user
+*.csproj.Backup.tmp
+
+# .NET build outputs
+bin/
+obj/

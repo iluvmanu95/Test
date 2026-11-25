@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Name="Contract Summary" ReportInfo.Author="Fast Reports Inc" ReportInfo.Description="Adapted from the FastReport Simple List sample.">
+  <Dictionary>
+    <TableDataSource Name="Contracts" ReferenceName="Contracts" DataType="System.Int32" Enabled="true">
+      <Column Name="SoThuTu" DataType="System.String"/>
+      <Column Name="MaNhanVien" DataType="System.String"/>
+      <Column Name="HoTen" DataType="System.String"/>
+      <Column Name="PhongBan" DataType="System.String"/>
+      <Column Name="SoHopDong" DataType="System.String"/>
+      <Column Name="LoaiHopDong" DataType="System.String"/>
+      <Column Name="NgayHieuLuc" DataType="System.String"/>
+      <Column Name="NgayHetHan" DataType="System.String"/>
+      <Column Name="MucLuong" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Landscape="true" PaperWidth="297" PaperHeight="210" Watermark.Font="Arial, 60pt">
+    <ReportTitleBand Name="ReportTitle1" Width="784" Height="42" CanGrow="true">
+      <TextObject Name="Text1" Width="784" Height="36" Text="BẢNG TỔNG HỢP HỢP ĐỒNG LAO ĐỘNG" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 14pt, style=Bold"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="Header" Width="784" Height="30">
+      <TextObject Name="HeaderSoThuTu" Left="0" Width="30" Height="30" Text="STT" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderMaNhanVien" Left="30" Width="54" Height="30" Text="Mã NV" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderHoTen" Left="84" Width="125" Height="30" Text="Họ và tên" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderPhongBan" Left="209" Width="132" Height="30" Text="Phòng ban" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderSoHopDong" Left="341" Width="94" Height="30" Text="Số hợp đồng" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderLoaiHopDong" Left="435" Width="122" Height="30" Text="Loại hợp đồng" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderNgayHieuLuc" Left="557" Width="72" Height="30" Text="Hiệu lực" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderNgayHetHan" Left="629" Width="72" Height="30" Text="Hết hạn" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+      <TextObject Name="HeaderMucLuong" Left="701" Width="83" Height="30" Text="Lương (đồng)" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt, style=Bold" Border.Lines="All" Fill.Color="Gainsboro"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Width="784" Height="30" DataSource="Contracts">
+      <TextObject Name="SoThuTu" Left="0" Width="30" Height="30" Text="[Contracts.SoThuTu]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="MaNhanVien" Left="30" Width="54" Height="30" Text="[Contracts.MaNhanVien]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="HoTen" Left="84" Width="125" Height="30" Text="[Contracts.HoTen]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="PhongBan" Left="209" Width="132" Height="30" Text="[Contracts.PhongBan]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="SoHopDong" Left="341" Width="94" Height="30" Text="[Contracts.SoHopDong]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="LoaiHopDong" Left="435" Width="122" Height="30" Text="[Contracts.LoaiHopDong]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="NgayHieuLuc" Left="557" Width="72" Height="30" Text="[Contracts.NgayHieuLuc]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="NgayHetHan" Left="629" Width="72" Height="30" Text="[Contracts.NgayHetHan]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+      <TextObject Name="MucLuong" Left="701" Width="83" Height="30" Text="[Contracts.MucLuong]" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 8.5pt" Border.Lines="All"/>
+    </DataBand>
+    <ReportSummaryBand Name="Signing" Width="784" Height="112">
+      <TextObject Name="Role0" Left="62" Top="8" Width="240" Height="26" Text="Người lập biểu" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt"/>
+      <DigitalSignatureObject Name="Signature1" Left="62" Top="34" Width="240" Height="70" Border.Lines="All"/>
+      <TextObject Name="Role1" Left="472" Top="8" Width="240" Height="26" Text="Người phê duyệt" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt"/>
+      <DigitalSignatureObject Name="Signature2" Left="472" Top="34" Width="240" Height="70" Border.Lines="All"/>
+    </ReportSummaryBand>
+  </ReportPage>
+</Report>

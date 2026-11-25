@@ -1,0 +1,106 @@
+﻿@page "/"
+
+@using System.Data
+@using Microsoft.Data.SqlClient
+@inject IConfiguration Configuration
+@inject ILogger<Home> Logger
+
+<PageTitle>So sánh xuất PDF</PageTitle>
+
+<h1>So sánh xuất PDF</h1>
+<p>Xuất bảng hợp đồng lao động với hai vị trí ký trong PDF.</p>
+
+<label class="form-label" for="report-rows">Số dòng dữ liệu</label>
+<input id="report-rows" class="form-control w-auto mb-3" type="number" required min="1" max="@MaxRows" value="@InitialRows" aria-controls="sql-contracts" />
+
+<div class="d-flex flex-wrap gap-2 mb-3" id="report-actions">
+    <button class="btn btn-primary" type="button" data-engine="fast">Tải PDF FastReport</button>
+    <button class="btn btn-outline-primary" type="button" data-engine="bold">Tải PDF Bold Reports</button>
+</div>
+
+<p id="report-status" role="status"></p>
+
+<div class="table-responsive">
+<table class="table table-bordered">
+    <caption>Lần xuất gần nhất. Tổng thời gian của Bold Reports gồm bước thêm trường ký sau khi dựng PDF.</caption>
+    <thead>
+        <tr><th scope="col">Công cụ</th><th scope="col">Số dòng</th><th scope="col">Engine (ms)</th><th scope="col">Tổng (ms)</th><th scope="col">Số trang</th><th scope="col">Trường ký trống</th></tr>
+    </thead>
+    <tbody>
+        <tr><th scope="row">FastReport</th><td id="fast-rows">—</td><td id="fast-engine-ms">—</td><td id="fast-ms">—</td><td id="fast-pages">—</td><td id="fast-signatures">—</td></tr>
+        <tr><th scope="row">Bold Reports</th><td id="bold-rows">—</td><td id="bold-engine-ms">—</td><td id="bold-ms">—</td><td id="bold-pages">—</td><td id="bold-signatures">—</td></tr>
+    </tbody>
+</table>
+</div>
+
+@if (contracts is not null && contracts.Rows.Count > 0)
+{
+    <div class="table-responsive">
+        <table id="sql-contracts" class="table table-bordered">
+            <caption>Hợp đồng từ SQL Server (<span id="sql-contract-count">@InitialRows</span> dòng đang hiển thị)</caption>
+            <thead>
+                <tr>
+                    <th scope="col">STT</th>
+                    <th scope="col">Mã nhân viên</th>
+                    <th scope="col">Họ tên</th>
+                    <th scope="col">Phòng ban</th>
+                    <th scope="col">Số hợp đồng</th>
+                    <th scope="col">Loại hợp đồng</th>
+                    <th scope="col">Ngày hiệu lực</th>
+                    <th scope="col">Ngày hết hạn</th>
+                    <th scope="col">Mức lương</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var index = 0; index < contracts.Rows.Count; index++)
+                {
+                    <tr hidden="@(index >= InitialRows)">
+                        @foreach (var value in contracts.Rows[index].ItemArray)
+                        {
+                            <td>@(value is DBNull ? "—" : value)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <nav id="sql-contract-pagination" class="mt-2 mb-4" aria-label="Phân trang hợp đồng" hidden>
+        <button type="button" class="btn btn-outline-secondary btn-sm" value="0" aria-controls="sql-contracts">Trang trước</button>
+        <span id="sql-contract-page" class="mx-2" role="status"></span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" value="2" aria-controls="sql-contracts">Trang sau</button>
+    </nav>
+}
+else
+{
+    <p role="status">@contractsStatus</p>
+}
+
+@code {
+    private const int DefaultRows = 5;
+    private const int ExportLimit = 200;
+    private DataTable? contracts;
+    private int MaxRows => contracts is { Rows.Count: > 0 } ? contracts.Rows.Count : ExportLimit;
+    private int InitialRows => Math.Min(DefaultRows, MaxRows);
+    private string contractsStatus = "Đang tải hợp đồng từ SQL Server…";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var connectionString = Configuration.GetConnectionString("Reports");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            contractsStatus = "Cần cấu hình kết nối Reports để hiển thị hợp đồng từ SQL Server.";
+            return;
+        }
+
+        try
+        {
+            contracts = await ContractReport.ReadSqlAsync(connectionString, ExportLimit, CancellationToken.None);
+            contractsStatus = "SQL Server chưa có hợp đồng để hiển thị.";
+        }
+        catch (SqlException exception)
+        {
+            Logger.LogError(exception, "Failed to load contracts for the home page.");
+            contractsStatus = "Không đọc được dữ liệu hợp đồng từ SQL Server.";
+        }
+    }
+}
