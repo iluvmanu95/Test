@@ -1,18 +1,20 @@
-﻿const { mkdir, writeFile } = require("node:fs/promises");
+const { mkdir, writeFile } = require("node:fs/promises");
 const path = require("node:path");
 const base = process.argv[2] ?? "http://localhost:5296";
-const out = path.join(__dirname, "obj", "sql-load");
+const template = process.argv[3] ?? "summary";
+if (template !== "summary" && template !== "list") throw new Error("Template must be summary or list.");
+const out = path.join(__dirname, "obj", "sql-load", template);
 const rows = [60, 200];
 const users = [1, 5, 10];
 const waves = 5;
 
 async function exportPdf(engine, count) {
     const start = performance.now();
-    const response = await fetch(`${base}/reports/${engine}/${count}`, { signal: AbortSignal.timeout(30000) });
+    const response = await fetch(`${base}/reports/${engine}/${count}?template=${encodeURIComponent(template)}`, { signal: AbortSignal.timeout(30000) });
     const pdf = Buffer.from(await response.arrayBuffer());
     const elapsed = performance.now() - start;
     const header = name => response.headers.get(name);
-    if (!response.ok || header("X-Data-Source") !== "sql" || header("X-Pdf-Empty-Signatures") !== "2" ||
+    if (!response.ok || header("X-Data-Source") !== "sql" || header("X-Pdf-Empty-Signatures") !== "3" ||
         Number(header("X-Pdf-Pages")) !== (count === 60 ? 3 : 10) || pdf.subarray(0, 5).toString() !== "%PDF-") {
         throw new Error(`${engine}/${count}: HTTP ${response.status}, source ${header("X-Data-Source")}, signatures ${header("X-Pdf-Empty-Signatures")}`);
     }

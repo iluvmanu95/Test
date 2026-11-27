@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report>
+  <ReportPage Name="Page1" Landscape="true" PaperWidth="297" PaperHeight="210">
+    <ReportTitleBand Name="Canvas" Height="509" CanGrow="false">
+      <TextObject Name="Item1" Left="290" Top="128" Width="200" Height="48" Text="test thiết kế report" AllowExpressions="false" HorzAlign="Left" CanGrow="false" Font="Segoe UI, 12pt" TextFill.Color="0, 0, 0" WordWrap="true" />
+      <DigitalSignatureObject Name="Item2" Left="48" Top="435" Width="220" Height="72" Border.Lines="All" />
+      <DigitalSignatureObject Name="Item3" Left="343" Top="437" Width="220" Height="72" Border.Lines="All" />
+      <DigitalSignatureObject Name="Item4" Left="640" Top="435" Width="220" Height="72" Border.Lines="All" />
+      <TableObject Name="ReportTable" Left="24" Top="268" Width="1016" Height="54" CanGrow="false">
+        <TableColumn Name="Column1" Width="120" />
+        <TableColumn Name="Column2" Width="120" />
+        <TableColumn Name="Column3" Width="120" />
+        <TableColumn Name="Column4" Width="120" />
+        <TableColumn Name="Column5" Width="120" />
+        <TableColumn Name="Column6" Width="120" />
+        <TableColumn Name="Column7" Width="120" />
+        <TableColumn Name="Column8" Width="120" />
+        <TableColumn Name="Column9" Width="56" />
+        <TableRow Name="Row0" Height="30" AutoSize="false">
+          <TableCell Name="Cell0Column1" Text="Cột 1" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column2" Text="Cột 2" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column3" Text="Cột 3" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column4" Text="Cột 4" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column5" Text="Cột 5" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column6" Text="Cột 6" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column7" Text="Cột 7" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column8" Text="Cột 8" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+          <TableCell Name="Cell0Column9" Text="Cột 9" HorzAlign="Center" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="false" Fill.Color="Gainsboro" />
+        </TableRow>
+        <TableRow Name="Row1" Height="24" AutoSize="false">
+          <TableCell Name="Cell1Column1" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column2" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column3" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column4" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column5" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column6" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column7" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column8" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+          <TableCell Name="Cell1Column9" Text="" HorzAlign="Left" VertAlign="Center" Font="Segoe UI, 9pt" TextFill.Color="0, 0, 0" WordWrap="true" Border.Lines="All" AllowExpressions="true" />
+        </TableRow>
+      </TableObject>
+    </ReportTitleBand>
+  </ReportPage>
+</Report>

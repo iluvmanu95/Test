@@ -1,0 +1,586 @@
+@page "/contract-report-designer"
+@using System.Text.Json
+@using TestReport.Features.ContractReportDesigner
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Thiết kế báo cáo</PageTitle>
+
+<h1>Thiết kế báo cáo</h1>
+
+<form class="designer-actions" action="/contract-report-designer/export" method="post" target="_blank">
+    <AntiforgeryToken />
+    <label class="btn btn-outline-secondary designer-import">
+        Mở .frx
+        <InputFile id="open-report-frx" class="visually-hidden" accept=".frx" OnChange="OpenFrx" disabled="@openingFrx" />
+    </label>
+    <input type="hidden" name="columns" value="@JsonSerializer.Serialize(columns)" />
+    <input type="hidden" name="tableX" value="@tableX" />
+    <input type="hidden" name="tableY" value="@tableY" />
+    <input type="hidden" name="dataRows" value="@dataRows" />
+    <input type="hidden" name="tableTypography" value="@JsonSerializer.Serialize(tableTypography)" />
+    <input type="hidden" name="merges" value="@JsonSerializer.Serialize(verticalMerges)" />
+    <input type="hidden" name="objects" value="@JsonSerializer.Serialize(objects)" />
+    <button class="btn btn-primary" name="output" value="pdf" disabled="@(!CanExport)">Xem trước PDF</button>
+    <button class="btn btn-outline-primary" name="output" value="frx" disabled="@(!CanExport)">Tải .frx</button>
+</form>
+
+@if (frxStatus is not null)
+{
+    <p class="@(frxError ? "text-danger" : "text-success")" role="status">@frxStatus</p>
+}
+
+<div class="designer-workspace">
+    <aside class="designer-panel" aria-label="Cấu trúc báo cáo">
+        <h2>Đối tượng</h2>
+        <div class="designer-tools">
+            @foreach (var tool in ReportObject.Tools)
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(objects.Count >= ReportObject.Limit)" draggable="true"
+                        @ondragstart="@(() => draggedTool = tool.Kind)" @ondragend="ResetDrag"
+                        @onclick="@(() => AddObject(tool.Kind, 24, 24 + objects.Count % 8 * 24))">@tool.Label</button>
+            }
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    draggable="@(columns.Count == 0 ? "true" : "false")"
+                    @ondragstart="@(() => draggedTool = "table")" @ondragend="ResetDrag"
+                    @onclick="SelectTable">Bảng</button>
+        </div>
+        <h2>Cấu trúc báo cáo</h2>
+        <ul class="designer-tree">
+            <li>Trang 1
+                <ul>
+                    @foreach (var item in objects)
+                    {
+                        <li><button type="button" class="designer-tree-item" @onclick="@(() => SelectObject(item.Id))">
+                            @ReportObject.Tools.First(tool => tool.Kind == item.Kind).Label @item.Id
+                        </button></li>
+                    }
+                    @if (columns.Count > 0)
+                    {
+                        <li><button type="button" class="designer-tree-item" @onclick="SelectTable">
+                            Bảng dữ liệu (@columns.Count cột)
+                        </button></li>
+                    }
+                </ul>
+            </li>
+        </ul>
+    </aside>
+
+    <section class="designer-sheet" aria-label="Bố cục báo cáo">
+        <div class="designer-paper">
+            <div class="designer-canvas-scroll">
+                <div class="designer-canvas" aria-label="Trang thiết kế tự do"
+                     style="width:@(ContractTemplate.PageWidth)px;height:@(ReportObject.CanvasHeight)px">
+                    @if (objects.Count == 0 && columns.Count == 0)
+                    {
+                        <p class="designer-empty">Kéo một đối tượng vào trang, hoặc bấm vào đối tượng để thêm.</p>
+                    }
+                    @foreach (var item in objects)
+                    {
+                        <button @key="item.Id" type="button" class="designer-object object-@item.Kind"
+                                style="@ObjectStyle(item)" draggable="true"
+                                aria-label="@($"{item.Kind} {item.Id}")"
+                                aria-pressed="@(selectedObject == item.Id ? "true" : "false")"
+                                @onclick="@(() => SelectObject(item.Id))"
+                                @ondragstart="@(args => StartObjectDrag(item.Id, args))" @ondragend="ResetDrag">
+                            @if (item is { Kind: "image", Image: { } image })
+                            {
+                                <img src="@ImageUrl(image)" alt="" draggable="false" />
+                            }
+                            else
+                            {
+                                @(item.Kind == "text" ? item.Text : item.Kind == "signature" ? "Ký số" : item.Kind == "image" ? "Ảnh" : "")
+                            }
+                        </button>
+                    }
+                    @if (columns.Count > 0)
+                    {
+                        <div class="designer-table" style="@TableStyle"
+                             aria-label="Bảng dữ liệu" draggable="true"
+                             @ondragstart="@(() => draggedTool = "table")" @ondragend="ResetDrag">
+                            @for (var index = 0; index < columns.Count; index += columns[index].HeaderSpan)
+                            {
+                                var column = columns[index];
+                                <button type="button" class="designer-column designer-header"
+                                        style="@CellStyle(index, 0, column)"
+                                        aria-pressed="@(selectedRow == 0 && SelectedHeaderIndex == index ? "true" : "false")"
+                                        @onclick="@(() => SelectColumn(column.Id))">@column.Label</button>
+                            }
+                            @for (var row = 1; row <= dataRows; row++)
+                            {
+                                var cellRow = row;
+                                for (var index = 0; index < columns.Count; index++)
+                                {
+                                    var column = columns[index];
+                                    if (VerticalAt(column.Id, row) is { } merge && merge.Row != row)
+                                        continue;
+                                    <button type="button" class="designer-column designer-data-cell"
+                                            style="@CellStyle(index, row, column)"
+                                            aria-label="@($"Hàng {row}, cột {column.Label}")"
+                                            aria-pressed="@(selectedColumn == column.Id && selectedRow == row ? "true" : "false")"
+                                            @onclick="@(() => SelectColumn(column.Id, cellRow))"></button>
+                                }
+                            }
+                        </div>
+                    }
+                    @if (draggedTool is not null || draggedObject is not null)
+                    {
+                        <div class="designer-drop-layer" @ondragover:preventDefault @ondrop:preventDefault
+                             @ondrop="DropObject"></div>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <aside class="designer-panel" aria-label="Thuộc tính">
+        <h2>Thuộc tính</h2>
+        @if (SelectedObject is { } activeObject)
+        {
+            @if (activeObject.Kind == "image")
+            {
+                <label for="object-image">Ảnh PNG hoặc JPEG</label>
+                <InputFile id="object-image" class="form-control mb-2" accept="image/png,image/jpeg"
+                           OnChange="@(args => LoadImage(activeObject, args.File))" />
+                @if (imageError is not null)
+                {
+                    <p class="text-danger" role="alert">@imageError</p>
+                }
+            }
+            @if (activeObject.Kind == "text")
+            {
+                <label for="object-text">Nội dung</label>
+                <textarea id="object-text" class="form-control mb-2" maxlength="200"
+                          @bind:get="activeObject.Text" @bind:set="@(value => UpdateObject(activeObject with { Text = value ?? "" }))" @bind:event="oninput"></textarea>
+                <TypographyFields Value="@activeObject.TextStyle"
+                                  ValueChanged="@(style => UpdateObject(activeObject with { Typography = style }))" />
+                <label class="d-block" for="object-align">Căn lề</label>
+                <select id="object-align" class="form-select mb-2" value="@activeObject.Align"
+                        @onchange="@(args => UpdateObject(activeObject with { Align = args.Value?.ToString() ?? "Left" }))">
+                    <option value="Left">Trái</option><option value="Center">Giữa</option><option value="Right">Phải</option>
+                </select>
+            }
+            <div class="designer-geometry">
+                <label>X <input class="form-control" type="number" min="0"
+                                @bind:get="activeObject.X" @bind:set="@(value => UpdateObject(activeObject with { X = value }))" /></label>
+                <label>Y <input class="form-control" type="number" min="0"
+                                @bind:get="activeObject.Y" @bind:set="@(value => UpdateObject(activeObject with { Y = value }))" /></label>
+                <label>Rộng <input class="form-control" type="number" min="12"
+                                   @bind:get="activeObject.Width" @bind:set="@(value => UpdateObject(activeObject with { Width = value }))" /></label>
+                @if (activeObject.Kind != "line")
+                {
+                    <label>Cao <input class="form-control" type="number" min="8"
+                                      @bind:get="activeObject.Height" @bind:set="@(value => UpdateObject(activeObject with { Height = value }))" /></label>
+                }
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm mt-3" @onclick="RemoveObject">Xóa đối tượng</button>
+        }
+        else if (Selected is { } selected)
+        {
+            <h3 class="h6">Bảng dữ liệu</h3>
+            <TypographyFields Value="@tableTypography" ValueChanged="UpdateTableTypography" MaxSize="@MaxTableFontSize" />
+            <div class="designer-geometry">
+                <label>X <input class="form-control" type="number" min="0"
+                                @bind:get="tableX" @bind:set="@(value => PositionTable(value, tableY))" /></label>
+                <label>Y <input class="form-control" type="number" min="0"
+                                @bind:get="tableY" @bind:set="@(value => PositionTable(tableX, value))" /></label>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm mb-2" type="button"
+                    disabled="@(columns.Count >= ContractTemplate.MaxColumns || RemainingWidth < ContractTemplate.MinColumnWidth)"
+                    @onclick="AddColumn">Thêm cột</button>
+            <button class="btn btn-outline-secondary btn-sm mb-2" type="button"
+                    disabled="@(!CanAddRow)" @onclick="AddRow">Thêm hàng</button>
+            <label for="column-label">Tiêu đề cột</label>
+            <input id="column-label" class="form-control mb-2" maxlength="40" value="@selected.Label"
+                   @oninput="@(args => Update(selected with { Label = args.Value?.ToString() ?? "" }))" />
+            <label for="column-width">Độ rộng (px)</label>
+            <input id="column-width" class="form-control mb-2" type="number" min="@ContractTemplate.MinColumnWidth" max="@ContractTemplate.PageWidth"
+                   @bind:get="selected.Width" @bind:set="@(width => Update(selected with { Width = width }))" />
+            <label for="column-align">Căn lề</label>
+            <select id="column-align" class="form-select mb-2" @bind:get="selected.Align"
+                    @bind:set="@(alignment => Update(selected with { Align = alignment ?? "Left" }))">
+                <option value="Left">Trái</option>
+                <option value="Center">Giữa</option>
+                <option value="Right">Phải</option>
+            </select>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanMoveTo(SelectedIndex - 1))"
+                        @onclick="@(() => Move(SelectedIndex, SelectedIndex - 1))">Sang trái</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanMoveTo(SelectedIndex + 1))"
+                        @onclick="@(() => Move(SelectedIndex, SelectedIndex + 1))">Sang phải</button>
+                <button type="button" class="btn btn-outline-danger btn-sm" disabled="@(SelectedHeaderSpan > 1)" @onclick="Remove">Bỏ cột</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(!CanMergeHeaderRight)" @onclick="MergeHeaderRight">Gộp tiêu đề bên phải</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(SelectedHeaderSpan == 1)" @onclick="SplitHeader">Tách ô tiêu đề</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(!CanMergeDown)" @onclick="MergeDown">Gộp với ô bên dưới</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        disabled="@(SelectedVertical is null)" @onclick="SplitVertical">Tách ô dọc</button>
+            </div>
+            @if (SelectedHeaderSpan > 1)
+            {
+                <p class="small mt-2">Tiêu đề gộp @SelectedHeaderSpan cột. Tách ô trước khi di chuyển hoặc xóa cột trong nhóm.</p>
+            }
+            @if (!CanExport)
+            {
+                <p class="text-danger mt-2">Kiểm tra tên cột và tổng độ rộng của bảng.</p>
+            }
+        }
+        else
+        {
+            <p>Chọn một đối tượng hoặc một cột.</p>
+        }
+    </aside>
+</div>
+
+@code {
+    private readonly List<ContractColumn> columns = [];
+    private readonly List<TableMerge> verticalMerges = [];
+    private readonly List<ReportObject> objects = [];
+    private int nextObjectId = 1;
+    private int? selectedObject;
+    private int? draggedObject;
+    private string? draggedTool;
+    private int dragX;
+    private int dragY;
+    private string? imageError;
+    private string? frxStatus;
+    private bool frxError;
+    private bool openingFrx;
+    private int nextColumnId = 1;
+    private int? selectedColumn;
+    private int selectedRow;
+    private int dataRows = 1;
+    private ReportTypography tableTypography = ReportTypography.TableDefault;
+    private int tableX;
+    private int tableY;
+    private int SelectedIndex => columns.FindIndex(column => column.Id == selectedColumn);
+    private int SelectedHeaderIndex => HeaderStartAt(SelectedIndex);
+    private int SelectedHeaderSpan => SelectedHeaderIndex < 0 ? 0 : columns[SelectedHeaderIndex].HeaderSpan;
+    private ContractColumn? Selected => SelectedIndex >= 0 ? columns[SelectedIndex] : null;
+    private ReportObject? SelectedObject => objects.FirstOrDefault(item => item.Id == selectedObject);
+    private bool CanExport => ContractTemplate.IsValid(columns, tableX, tableY, dataRows, tableTypography.Size) && objects.All(ReportObject.IsValid);
+    private int TableWidth => columns.Sum(column => column.Width);
+    private int RemainingWidth => ContractTemplate.PageWidth - tableX - TableWidth;
+    private string TableStyle => $"left:{tableX}px;top:{tableY}px;grid-template-rows:" +
+        $"{TableRowStyle(true)} repeat({dataRows},{TableRowStyle(false)});" +
+        $"grid-template-columns:{string.Join(' ', columns.Select(column => $"{column.Width}px"))};{tableTypography.Css()}";
+    private string TableRowStyle(bool header)
+    {
+        var height = ContractTemplate.RowHeight(tableTypography.Size, header);
+        return tableTypography.AutoSize ? $"minmax({height}px,max-content)" : $"{height}px";
+    }
+    private int MaxTableFontSize => Enumerable.Range(8, 41)
+        .Last(size => ContractTemplate.TableHeight(dataRows, size) <= ReportObject.CanvasHeight);
+    private bool CanAddRow => dataRows < ContractTemplate.MaxDataRows &&
+        tableY + ContractTemplate.TableHeight(dataRows + 1, tableTypography.Size) <= ReportObject.CanvasHeight;
+    private TableMerge? SelectedVertical => selectedColumn is int id ? VerticalAt(id, selectedRow) : null;
+    private bool CanMergeDown => selectedColumn.HasValue && (selectedRow != 0 || SelectedHeaderSpan == 1) &&
+        (SelectedVertical?.Row ?? selectedRow) + (SelectedVertical?.Span ?? 1) <= dataRows;
+    private bool CanMergeHeaderRight => selectedRow == 0 && SelectedHeaderIndex >= 0 &&
+        SelectedHeaderIndex + SelectedHeaderSpan < columns.Count &&
+        VerticalAt(columns[SelectedHeaderIndex].Id, 0) is null &&
+        VerticalAt(columns[SelectedHeaderIndex + SelectedHeaderSpan].Id, 0) is null;
+
+    private TableMerge? VerticalAt(int id, int row) => verticalMerges.Find(merge => merge.Covers(id, row));
+
+    private async Task OpenFrx(InputFileChangeEventArgs args)
+    {
+        frxError = true;
+        var file = args.File;
+        if (!file.Name.EndsWith(".frx", StringComparison.OrdinalIgnoreCase) || file.Size > ContractTemplate.MaxFrxBytes)
+        {
+            frxStatus = "Chọn file .frx có dung lượng tối đa 1 MB.";
+            return;
+        }
+
+        openingFrx = true;
+        frxStatus = null;
+        try
+        {
+            using var input = file.OpenReadStream(ContractTemplate.MaxFrxBytes);
+            var layout = await ContractTemplate.ImportAsync(input);
+            objects.Clear();
+            objects.AddRange(layout.Objects);
+            columns.Clear();
+            columns.AddRange(layout.Columns);
+            verticalMerges.Clear();
+            verticalMerges.AddRange(layout.Merges);
+            tableX = layout.TableX;
+            tableY = layout.TableY;
+            dataRows = layout.DataRows;
+            tableTypography = layout.TableTypography;
+            nextObjectId = objects.Select(item => item.Id).DefaultIfEmpty(0).Max() + 1;
+            nextColumnId = columns.Select(column => column.Id).DefaultIfEmpty(0).Max() + 1;
+            selectedObject = null;
+            selectedColumn = null;
+            selectedRow = 0;
+            ResetDrag();
+            frxError = false;
+            frxStatus = $"Đã mở {file.Name}. Bạn có thể chọn đối tượng và chỉnh sửa.";
+        }
+        catch (InvalidDataException error)
+        {
+            frxStatus = error.Message;
+        }
+        catch (Exception error) when (error is System.Xml.XmlException or FormatException or OverflowException or IOException)
+        {
+            frxStatus = "Không đọc được file .frx. Kiểm tra file và thử lại.";
+        }
+        finally
+        {
+            openingFrx = false;
+        }
+    }
+
+    private string CellStyle(int index, int row, ContractColumn column) =>
+        $"grid-column:{index + 1} / span {(row == 0 ? column.HeaderSpan : 1)};" +
+        $"grid-row:{row + 1} / span {VerticalAt(column.Id, row)?.Span ?? 1}";
+
+    private void AddRow()
+    {
+        if (CanAddRow && selectedColumn is int id)
+            SelectColumn(id, ++dataRows);
+    }
+
+    private void MergeDown()
+    {
+        if (!CanMergeDown || selectedColumn is not int id)
+            return;
+        var current = SelectedVertical;
+        var row = current?.Row ?? selectedRow;
+        var span = current?.Span ?? 1;
+        var next = VerticalAt(id, row + span);
+        if (current is not null)
+            verticalMerges.Remove(current);
+        if (next is not null)
+            verticalMerges.Remove(next);
+        verticalMerges.Add(new TableMerge(id, row, span + (next?.Span ?? 1)));
+        SelectColumn(id, row);
+    }
+
+    private void SplitVertical()
+    {
+        if (SelectedVertical is { } merge)
+            verticalMerges.Remove(merge);
+    }
+
+    private int HeaderStartAt(int index)
+    {
+        if (index < 0 || index >= columns.Count)
+            return -1;
+        var start = 0;
+        while (index >= start + columns[start].HeaderSpan)
+            start += columns[start].HeaderSpan;
+        return start;
+    }
+
+    private bool CanMoveTo(int target) =>
+        target >= 0 && target < columns.Count && SelectedHeaderSpan == 1 &&
+        HeaderStartAt(target) == target && columns[target].HeaderSpan == 1;
+
+    private void MergeHeaderRight()
+    {
+        var start = SelectedHeaderIndex;
+        var next = start + SelectedHeaderSpan;
+        if (!CanMergeHeaderRight)
+            return;
+
+        columns[start] = columns[start] with { HeaderSpan = SelectedHeaderSpan + columns[next].HeaderSpan };
+        columns[next] = columns[next] with { HeaderSpan = 1 };
+        SelectColumn(columns[start].Id);
+    }
+
+    private void SplitHeader()
+    {
+        var start = SelectedHeaderIndex;
+        if (start >= 0)
+            columns[start] = columns[start] with { HeaderSpan = 1 };
+    }
+
+    private void AddColumn()
+    {
+        var id = nextColumnId++;
+        columns.Add(new ContractColumn(id, $"Cột {id}", Math.Min(120, RemainingWidth), "Left"));
+        SelectColumn(id);
+    }
+
+    private void SelectTable()
+    {
+        if (columns.Count == 0)
+        {
+            PositionTable(24, 24);
+            AddColumn();
+        }
+        else
+            SelectColumn(columns[0].Id);
+    }
+
+    private void PositionTable(int x, int y)
+    {
+        tableX = Math.Clamp(x, 0, Math.Max(0, ContractTemplate.PageWidth - TableWidth));
+        tableY = Math.Clamp(y, 0, ReportObject.CanvasHeight - ContractTemplate.TableHeight(dataRows, tableTypography.Size));
+    }
+
+    private void UpdateTableTypography(ReportTypography style)
+    {
+        tableTypography = style;
+        PositionTable(tableX, tableY);
+    }
+
+    private void SelectColumn(int id, int row = 0)
+    {
+        selectedColumn = id;
+        selectedRow = row;
+        selectedObject = null;
+    }
+
+    private void SelectObject(int id)
+    {
+        imageError = null;
+        selectedObject = id;
+        selectedColumn = null;
+    }
+
+    private async Task LoadImage(ReportObject item, IBrowserFile file)
+    {
+        imageError = null;
+        if (file.Size <= ReportObject.MaxImageBytes)
+        {
+            try
+            {
+                using var input = file.OpenReadStream(ReportObject.MaxImageBytes);
+                using var bytes = new MemoryStream();
+                await input.CopyToAsync(bytes);
+                var image = Convert.ToBase64String(bytes.ToArray());
+                if (objects.Where(existing => existing.Id != item.Id).Sum(existing => existing.Image?.Length ?? 0)
+                    + image.Length <= ReportObject.ImagesLimit && ReportObject.IsValidImage(image))
+                {
+                    UpdateObject(item with { Image = image });
+                    return;
+                }
+            }
+            catch (IOException)
+            {
+                imageError = "Không đọc được ảnh. Hãy chọn lại tệp.";
+                return;
+            }
+        }
+        imageError = "Chọn PNG hoặc JPEG tối đa 128 KB và 2048 × 2048 px. Tổng dữ liệu ảnh đã mã hóa tối đa 512 KB.";
+    }
+
+    private static string ImageUrl(string image) =>
+        $"data:image/{(image.StartsWith("/9j/", StringComparison.Ordinal) ? "jpeg" : "png")};base64,{image}";
+
+    private void AddObject(string kind, int x, int y)
+    {
+        if (objects.Count >= ReportObject.Limit)
+            return;
+        var tool = ReportObject.Tools.First(tool => tool.Kind == kind);
+        var item = new ReportObject(nextObjectId++, kind, x, y, tool.Width, tool.Height,
+            kind == "text" ? "Văn bản" : "", "Left");
+        objects.Add(Fit(item));
+        SelectObject(item.Id);
+    }
+
+    private static ReportObject Fit(ReportObject item)
+    {
+        var width = Math.Clamp(item.Width, 12, ContractTemplate.PageWidth);
+        var height = Math.Clamp(item.Height, 8, ReportObject.CanvasHeight);
+        return item with { Width = width, Height = height,
+            X = Math.Clamp(item.X, 0, ContractTemplate.PageWidth - width),
+            Y = Math.Clamp(item.Y, 0, ReportObject.CanvasHeight - height) };
+    }
+
+    private void UpdateObject(ReportObject item)
+    {
+        var index = objects.FindIndex(existing => existing.Id == item.Id);
+        if (index >= 0)
+            objects[index] = Fit(item);
+    }
+
+    private void RemoveObject()
+    {
+        if (SelectedObject is { } item)
+            objects.Remove(item);
+        selectedObject = null;
+    }
+
+    private void StartObjectDrag(int id, DragEventArgs args)
+    {
+        draggedObject = id;
+        dragX = (int)args.OffsetX;
+        dragY = (int)args.OffsetY;
+    }
+
+    private void DropObject(DragEventArgs args)
+    {
+        var x = (int)args.OffsetX;
+        var y = (int)args.OffsetY;
+        if (draggedTool == "table")
+        {
+            SelectTable();
+            PositionTable(x, y);
+        }
+        else if (draggedTool is { } tool)
+            AddObject(tool, x, y);
+        else if (objects.FirstOrDefault(item => item.Id == draggedObject) is { } item)
+        {
+            UpdateObject(item with { X = x - dragX, Y = y - dragY });
+            SelectObject(item.Id);
+        }
+        ResetDrag();
+    }
+
+    private void ResetDrag()
+    {
+        draggedTool = null;
+        draggedObject = null;
+    }
+
+    private static string ObjectStyle(ReportObject item) =>
+        $"left:{item.X}px;top:{item.Y}px;width:{item.Width}px;" +
+        (item.Kind == "text" && item.TextStyle.AutoSize ? $"height:auto;min-height:{item.Height}px;" : $"height:{item.Height}px;") +
+        $"text-align:{item.Align};{item.TextStyle.Css()}";
+
+    private void Update(ContractColumn column)
+    {
+        var current = columns[SelectedIndex];
+        var width = Math.Clamp(column.Width, ContractTemplate.MinColumnWidth, current.Width + RemainingWidth);
+        columns[SelectedIndex] = column with { Width = width };
+    }
+
+    private void Remove()
+    {
+        if (SelectedHeaderSpan != 1)
+            return;
+
+        verticalMerges.RemoveAll(merge => merge.ColumnId == selectedColumn);
+        columns.RemoveAt(SelectedIndex);
+        if (columns.Count > 0)
+            SelectColumn(columns[0].Id);
+        else
+        {
+            selectedColumn = null;
+            dataRows = 1;
+            tableTypography = ReportTypography.TableDefault;
+        }
+    }
+
+    private void Move(int from, int to)
+    {
+        if (!CanMoveTo(to))
+            return;
+
+        var column = columns[from];
+        columns.RemoveAt(from);
+        columns.Insert(Math.Min(to, columns.Count), column);
+        SelectColumn(column.Id);
+    }
+
+}

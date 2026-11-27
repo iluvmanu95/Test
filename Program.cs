@@ -4,6 +4,7 @@ using System.Globalization;
 using Syncfusion.Pdf.Parsing;
 using TestReport;
 using TestReport.Components;
+using TestReport.Features.ContractReportDesigner;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
@@ -32,12 +33,32 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapGet("/reports/{engine}/{rows:int}", async (string engine, int rows, HttpContext context) =>
+app.MapGet("/reports/{engine}/{rows:int}", async (string engine, int rows, string? template, HttpContext context) =>
 {
-    if (rows is < 1 or > 200)
-        return Results.BadRequest("Chọn số dòng từ 1 đến 200.");
+    if (rows is < 1 or > ContractReport.MaxRows)
+        return Results.BadRequest($"Chọn số dòng từ 1 đến {ContractReport.MaxRows}.");
     if (engine is not ("fast" or "bold"))
         return Results.NotFound();
+    var layout = template switch
+    {
+        null or "summary" => "ContractSummary",
+        "list" => "ContractList",
+        "test-demo" => "TestDemo",
+        _ => null
+    };
+    if (layout is null)
+        return Results.BadRequest("Mẫu báo cáo không hợp lệ.");
+    var fastDemo = engine == "fast" && template == "test-demo";
+    var demoPath = Path.Combine(app.Environment.ContentRootPath, "Reports", "Fast", "test demo.frx");
+    if (fastDemo && !File.Exists(demoPath))
+        return Results.NotFound("Không tìm thấy file test demo.frx.");
+    if (!fastDemo)
+    {
+        var resource = engine == "fast" ? $"TestReport.Fast.{layout}.frx" : $"TestReport.Bold.{layout}.rdl";
+        using var input = typeof(ContractReport).Assembly.GetManifestResourceStream(resource);
+        if (input is null)
+            return Results.NotFound("Không tìm thấy file mẫu báo cáo.");
+    }
 
     var dataTimer = Stopwatch.StartNew();
     var data = string.IsNullOrWhiteSpace(reportsConnection)
@@ -47,9 +68,18 @@ app.MapGet("/reports/{engine}/{rows:int}", async (string engine, int rows, HttpC
         return Results.BadRequest("Cơ sở dữ liệu thử thiếu dữ liệu hợp đồng.");
     dataTimer.Stop();
     var timer = Stopwatch.StartNew();
-    var pdf = engine == "fast" ? ContractReport.Fast(data) : ContractReport.Bold(data);
+    byte[] pdf;
+    if (fastDemo)
+    {
+        using var input = File.OpenRead(demoPath);
+        pdf = ContractReport.FastDemo(input, data);
+    }
+    else
+    {
+        pdf = engine == "fast" ? ContractReport.Fast(data, layout) : ContractReport.Bold(data, layout);
+    }
     var engineMilliseconds = timer.Elapsed.TotalMilliseconds;
-    if (engine == "bold")
+    if (engine == "bold" && template != "test-demo")
         pdf = ContractReport.AddBoldSignatureFields(pdf, (string)data.Rows[rows - 1]["MaNhanVien"]);
     timer.Stop();
 
@@ -67,7 +97,58 @@ app.MapGet("/reports/{engine}/{rows:int}", async (string engine, int rows, HttpC
     context.Response.Headers["X-Pdf-Pages"] = document.Pages.Count.ToString();
     context.Response.Headers["X-Pdf-Empty-Signatures"] = emptySignatures.ToString();
     context.Response.Headers.CacheControl = "no-store";
-    return Results.File(pdf, "application/pdf", $"{engine}-hop-dong-{rows}.pdf");
+    var fileLabel = template switch
+    {
+        "test-demo" => "test-demo",
+        "list" => "danh-sach-hop-dong",
+        _ => "hop-dong"
+    };
+    return Results.File(pdf, "application/pdf", $"{engine}-{fileLabel}-{rows}.pdf");
 });
+
+app.MapGet("/reports/sample", (string template, IWebHostEnvironment environment, HttpContext context) =>
+{
+    if (template is not ("hdthuviec" or "hopdong"))
+        return Results.NotFound();
+
+    var path = Path.Combine(environment.ContentRootPath, "Reports", "Fast", $"{template}.frx");
+    using var input = File.Exists(path) ? File.OpenRead(path) : null;
+    if (input is null)
+        return Results.NotFound("Không tìm thấy file mẫu FastReport.");
+
+    var pdf = ContractReport.Fast(input);
+    context.Response.Headers.CacheControl = "no-store";
+    return Results.File(pdf, "application/pdf", $"{template}.pdf");
+});
+
+app.MapGet("/reports/print/{rows:int}", async (int rows, HttpContext context) =>
+{
+    if (rows is < 1 or > ContractReport.MaxRows)
+        return Results.BadRequest($"Chọn số dòng từ 1 đến {ContractReport.MaxRows}.");
+
+    var path = Path.Combine(app.Environment.ContentRootPath, "Reports", "bao-cao.frx");
+    if (!File.Exists(path))
+        return Results.NotFound("Không tìm thấy Reports/bao-cao.frx.");
+
+    var data = string.IsNullOrWhiteSpace(reportsConnection)
+        ? ContractReport.Sample(rows)
+        : await ContractReport.ReadSqlAsync(reportsConnection, rows, context.RequestAborted);
+    if (data.Rows.Count == 0)
+        return Results.BadRequest("Không có hợp đồng để in.");
+
+    using var input = File.OpenRead(path);
+    try
+    {
+        var pdf = ContractReport.FastDesigned(input, data);
+        context.Response.Headers.CacheControl = "no-store";
+        return Results.File(pdf, "application/pdf", $"bao-cao-{data.Rows.Count}.pdf");
+    }
+    catch (InvalidDataException error)
+    {
+        return Results.BadRequest(error.Message);
+    }
+});
+
+app.MapPost("/contract-report-designer/export", ContractTemplate.Export);
 
 app.Run();

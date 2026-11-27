@@ -10,8 +10,8 @@ Run these from the repository root with the .NET 10 SDK. Start the web app befor
 
 - `dotnet build TestReport.slnx` restores packages and builds the solution.
 - `dotnet run --project TestReport.csproj --launch-profile http` starts the app at `http://localhost:5296`.
-- `.\Test-Reports.ps1` checks both download paths, PDF pagination around the signing section, and two empty signature fields on the final page. It saves PDFs under `obj/report-check/`.
-- `node Test-Reports-Load.cjs` benchmarks SQL-backed exports with 1, 5, and 10 concurrent requests. It writes PDFs and a CSV under `obj/sql-load/`.
+- `.\Test-Reports.ps1` checks both download paths, PDF pagination around the signing section, and three empty signature fields on the final page. It saves PDFs under `obj/report-check/`.
+- `node Test-Reports-Load.cjs` benchmarks the default layout with 1, 5, and 10 concurrent SQL-backed requests. Run `node Test-Reports-Load.cjs http://localhost:5296 list` for the list layout. Each run writes PDFs and a CSV under `obj/sql-load/<template>/`.
 
 The Development profile uses the `TestReportBenchmark` LocalDB instance for the home page and PDF exports. Run `Init-Benchmark.sql` on the test instance to seed it. Set `ConnectionStrings__Reports` to use a different test database. Use synthetic records and keep credentials out of project files.
 

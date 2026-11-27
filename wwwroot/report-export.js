@@ -1,40 +1,3 @@
-﻿document.addEventListener("click", async event => {
-    const button = event.target.closest("#report-actions button");
-    if (!button) return;
-
-    const rows = document.getElementById("report-rows");
-    if (!rows.reportValidity()) return;
-
-    const count = rows.valueAsNumber;
-    const engine = button.dataset.engine;
-    const status = document.getElementById("report-status");
-    const buttons = document.querySelectorAll("#report-actions button");
-    buttons.forEach(item => item.disabled = true);
-    status.textContent = "Đang xuất PDF…";
-    try {
-        const response = await fetch(`/reports/${engine}/${count}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const url = URL.createObjectURL(await response.blob());
-        const download = document.createElement("a");
-        download.href = url;
-        download.download = `${engine}-hop-dong-${count}.pdf`;
-        download.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-        document.getElementById(`${engine}-rows`).textContent = count;
-        document.getElementById(`${engine}-engine-ms`).textContent = response.headers.get("X-Engine-Ms");
-        document.getElementById(`${engine}-ms`).textContent = response.headers.get("X-Export-Ms");
-        document.getElementById(`${engine}-pages`).textContent = response.headers.get("X-Pdf-Pages");
-        document.getElementById(`${engine}-signatures`).textContent = response.headers.get("X-Pdf-Empty-Signatures");
-        status.textContent = "PDF đã sẵn sàng.";
-    } catch (error) {
-        status.textContent = `Xuất PDF thất bại (${error.message}).`;
-    } finally {
-        buttons.forEach(item => item.disabled = false);
-    }
-});
-
 document.addEventListener("input", event => {
     const input = event.target;
     if (input.id !== "report-rows") return;
@@ -45,9 +8,48 @@ document.addEventListener("input", event => {
 });
 
 document.addEventListener("click", event => {
+    if (event.target.closest("#preview-designed-report")) {
+        showReportPreview();
+        return;
+    }
     const button = event.target.closest("#sql-contract-pagination button");
     if (button) showContractPage(document.getElementById("report-rows"), Number(button.value));
 });
+
+function showReportPreview() {
+    const input = document.getElementById("report-rows");
+    if (!input.reportValidity()) return;
+
+    const table = document.getElementById("sql-contracts");
+    const count = Math.min(input.valueAsNumber, table.tBodies[0].rows.length);
+    const status = document.getElementById("designed-report-status");
+    const preview = window.open("about:blank", "_blank");
+    if (!preview) {
+        status.textContent = "Trình duyệt đã chặn tab xem trước. Hãy cho phép mở tab mới.";
+        return;
+    }
+
+    status.textContent = "";
+    preview.opener = null;
+    const view = preview.document;
+    view.documentElement.lang = "vi";
+    view.title = "Xem trước báo cáo";
+    const styling = view.createElement("style");
+    styling.textContent = "body{margin:24px;font:16px system-ui}a{display:inline-block;margin-bottom:16px;padding:8px 18px;background:#0b4e5c;color:white;border-radius:4px}table{border-collapse:collapse}caption{text-align:left;margin-bottom:8px}th,td{border:1px solid #ccc;padding:8px;text-align:left}";
+    view.head.append(styling);
+
+    const print = view.createElement("a");
+    print.href = new URL(`/reports/print/${count}`, window.location.origin).href;
+    print.textContent = "In";
+
+    const report = table.cloneNode(true);
+    report.caption.textContent = `Báo cáo hợp đồng · ${count} dòng`;
+    [...report.tBodies[0].rows].forEach((row, index) => {
+        if (index < count) row.hidden = false;
+        else row.remove();
+    });
+    view.body.append(print, report);
+}
 
 function showContractPage(input, page) {
     const table = document.getElementById("sql-contracts");

@@ -1,0 +1,48 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<fieldset class="designer-font-fields">
+    <legend class="h6">Định dạng chữ</legend>
+    <label class="d-block mb-2">
+        Font chữ
+        <select name="font-family" class="form-select" value="@Value.Font"
+                @onchange="@(args => Change(Value with { Font = args.Value?.ToString() ?? "Segoe UI" }))">
+            @foreach (var font in ReportTypography.Fonts)
+            {
+                <option value="@font">@font</option>
+            }
+        </select>
+    </label>
+    <label class="d-block mb-2">
+        Cỡ chữ (pt)
+        <input name="font-size" class="form-control" type="number" min="8" max="@MaxSize"
+               @bind:get="Value.Size" @bind:set="@(size => Change(Value with { Size = Math.Clamp(size, 8, MaxSize) }))" />
+    </label>
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <label><input type="checkbox" checked="@Value.Bold"
+                      @onchange="@(args => Change(Value with { Bold = args.Value is true }))" /> Đậm</label>
+        <label><input type="checkbox" checked="@Value.Italic"
+                      @onchange="@(args => Change(Value with { Italic = args.Value is true }))" /> Nghiêng</label>
+        <label><input type="checkbox" checked="@Value.Underline"
+                      @onchange="@(args => Change(Value with { Underline = args.Value is true }))" /> Gạch chân</label>
+    </div>
+    <label class="d-block mb-2">
+        Màu chữ
+        <input name="font-color" class="form-control form-control-color" type="color" value="@Value.Color"
+               @oninput="@(args => Change(Value with { Color = args.Value?.ToString() ?? "#000000" }))" />
+    </label>
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <label><input type="checkbox" checked="@Value.WordWrap"
+                      @onchange="@(args => Change(Value with { WordWrap = args.Value is true }))" /> Xuống dòng (WordWrap)</label>
+        <label><input type="checkbox" checked="@Value.AutoSize"
+                      @onchange="@(args => Change(Value with { AutoSize = args.Value is true }))" /> Tự giãn chiều cao (AutoSize)</label>
+    </div>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public ReportTypography Value { get; set; } = ReportTypography.Default;
+    [Parameter] public EventCallback<ReportTypography> ValueChanged { get; set; }
+    [Parameter] public int MaxSize { get; set; } = 48;
+
+    private Task Change(ReportTypography style) => ValueChanged.InvokeAsync(style);
+}

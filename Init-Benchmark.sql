@@ -21,8 +21,9 @@ SELECT n, CONCAT(N'NV', suffix),
     CASE WHEN n % 3 = 0 THEN N'Không xác định thời hạn' ELSE N'Xác định thời hạn' END,
     effectiveDate, CASE WHEN n % 3 <> 0 THEN DATEADD(day, -1, DATEADD(year, 1, effectiveDate)) END,
     18000000 + n * 500000
-FROM GENERATE_SERIES(1, 200) AS numbers
-CROSS APPLY (VALUES (numbers.value, RIGHT(CONCAT('00', numbers.value), 3),
+FROM GENERATE_SERIES(1, 2000) AS numbers
+CROSS APPLY (VALUES (numbers.value, CASE WHEN numbers.value < 1000 THEN RIGHT(CONCAT('00', numbers.value), 3)
+    ELSE CONVERT(varchar(10), numbers.value) END,
     DATEADD(day, numbers.value - 1, DATEFROMPARTS(2026, 11, 1)))) AS sample(n, suffix, effectiveDate)
 WHERE NOT EXISTS (SELECT 1 FROM dbo.Contracts AS existing WHERE existing.SoThuTu = n);
 GO
